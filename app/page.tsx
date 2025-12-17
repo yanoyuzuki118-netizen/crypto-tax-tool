@@ -212,7 +212,7 @@ export default function Page() {
             style={{
               padding: "6px 10px",
               border: row.side === "buy" ? "1px solid #ffffffff" : "1px solid #ccc",
-              backgroundColor: row.side === "buy" ? "#87ca9eff" : "#ffffffff",
+              backgroundColor: row.side === "buy" ? "#87ca9eff" : "",
             }}
             onClick={() =>
               setRows((prev) =>
@@ -226,7 +226,7 @@ export default function Page() {
             style={{
               padding: "6px 10px",
               border: row.side === "sell" ? "1px solid #ffffffff" : "1px solid #ccc",
-              backgroundColor: row.side === "sell" ? "#ff9d9dff" : "#ffffffff",
+              backgroundColor: row.side === "sell" ? "#ff9d9dff" : "",
             }}
             onClick={() =>
               setRows((prev) =>
