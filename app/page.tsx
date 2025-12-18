@@ -195,10 +195,11 @@ export default function Page() {
           <input
             style={{ width: "80px", padding: "6px 10px", border: "1px solid #ccc" }}
             value={form.b0q}
-            onChange={(e) =>
-              /^[0-9]*$/.test(e.target.value) &&
-              setForm({ ...form, b0q: e.target.value })
-            }
+            onChange={(e) => {
+              const v = e.target.value;
+              if (!/^(?:0|[1-9]\d*)(?:\.\d*)?$/.test(v) && v !== "") return;
+              setForm(prev => ({ ...prev, b0q: v }));
+            }}
           />
           <div>BTC, ETH,<br />XTP, etc...</div>
         </div>
@@ -240,14 +241,16 @@ export default function Page() {
           <input
             style={{ width: "114px", padding: "6px 10px", border: "1px solid #ccc" }}
             value={row.qty}
-            onChange={(e) =>
-              /^\d*\.?\d*$/.test(e.target.value) &&
-              setRows((prev) =>
+            onChange={(e) => {
+              const v = e.target.value;
+              if (!/^(?:0|[1-9]\d*)(?:\.\d*)?$/.test(v) && v !== "") return;
+
+              setRows(prev =>
                 prev.map((r, index) =>
-                  index === i ? { ...r, qty: e.target.value } : r
+                  index === i ? { ...r, qty: v } : r
                 )
-              )
-            }
+              );
+            }}
           />
           <div>JPY：</div>
           <input
