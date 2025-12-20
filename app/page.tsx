@@ -1,475 +1,682 @@
 "use client";
 
-import { Elsie, Margarine } from "next/font/google";
-import { useState } from "react";
-import { useRef } from "react";
+import { Butterfly_Kids, Elsie, Margarine } from "next/font/google";
+import { useState, useRef, type RefObject, type KeyboardEvent } from "react";
+
 
 export default function Page() {
 
-  type Form = {
-    isStu: boolean | null;
-    salw: string;
-    b0v: string;
-    b0q: string;
-  };
-  type TradeRow = {
+  //型の定義
+  type ManualTrade = {
     id: string;
-    side: "buy" | "sell" | null;
+    side: "buy" | "sell" | "";
+    typ: string;
     qty: string;
     jpy: string;
     fee: string;
   };
+  type category = {
+    id: string;
+    name: string;
+    qty: string;
+    jpy: string;
+  }
+  type QJF = {
+    qty: number;
+    jpy: number;
+    fee: number;
+  }
+  type QJ = {
+    qty: number;
+    jpy: number;
+  }
+  type tradeDict = Record<
+    string,
+    Partial<Record<Side, QJF>>
+  >;
 
-  const [show, setShow] = useState(false);
-  const bottomRef = useRef<HTMLDivElement | null>(null);
-  const didScrollRef = useRef(false);
-  const [salwView, setSalwView] = useState("");
+  type openDict = {
+    [coin: string]: {}
+  }
+  type Side = "buy" | "sell";
 
-  const createEmptyRow = () => ({
+
+
+
+
+  //stateの定義
+  const [manualTrades, setManualTrades] = useState<ManualTrade[]>([]);
+  const [emptyManualTrade, setEmptyManualTrade] = useState<ManualTrade>({
     id: crypto.randomUUID(),
-    side: null,
+    side: "",
+    typ: "",
     qty: "",
     jpy: "",
     fee: "",
   });
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [editingManualTradeId, setEditingManualTradeId] = useState("");
+  const [sbError, setSbError] = useState<boolean>(false);
+  const [openInfo, setOpenInfo] = useState<category[]>([{
+    id: crypto.randomUUID(),
+    name: "",
+    qty: "",
+    jpy: ""
+  }]);
+  const [isOtherMap, setIsOtherMap] = useState<Record<string, boolean>>({});
+  const [otherNames, setOtherNames] = useState<Record<string, string>>({});
+  const [nameLengthError, setNameLengthError] = useState<Record<string, string>>({});
+  const [step, setStep] = useState<number>(2);
+  const [mResult, setMResult] = useState("")
+  const [zeroError, setZeroError] = useState<Boolean>(false)
 
-  const [rows, setRows] = useState<TradeRow[]>(
-    Array.from({ length: 11 }, createEmptyRow)
-  );
 
 
-  const [form, setForm] = useState<Form>({
-    isStu: null,
-    salw: "",
-    b0v: "",
-    b0q: "",
+  //関数
+  const stripComma = (s: string) => s.replace(/,/g, "");
+  const addComma = (digits: string) => {
+    if (digits === "") return "";
+    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+  function handleEnterMove<T extends HTMLElement>(nextRef: RefObject<T>) {
+    return (e: KeyboardEvent) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        nextRef.current?.focus();
+      }
+    };
+  }
+  const num = (s: string) => {
+    if (s === "") {
+      return 0;
+    }
+    return Number(s);
+  }
+
+  //変数
+  const OTHER = "__OTHER__";
+  const sideRef = useRef<HTMLSelectElement>(null!);
+  const typRef = useRef<HTMLSelectElement>(null!);
+  const qtyRef = useRef<HTMLInputElement>(null!);
+  const jpyRef = useRef<HTMLInputElement>(null!);
+  const feeRef = useRef<HTMLInputElement>(null!);
+  const submitBtnRef = useRef<HTMLButtonElement>(null!);
+  const editBtnRef = useRef<HTMLButtonElement>(null!);
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
+  const createEmptyCategory = (): category => ({
+    id: crypto.randomUUID(),
+    name: "",
+    qty: "",
+    jpy: "",
   });
+  const COIN_OPTIONS = ["BTC", "ETH", "XRP", "SOL", "LTC", "BCH", "MATIC"] as const;
+  const tradeTypOptions = Array.from(
+    new Set(
+      openInfo
+        .map((x) => x.name)
+        .filter((n) => n !== "" && n !== OTHER)
+    )
+  );
+  let smy: tradeDict = {}
+  let pnlTotal = 0
+  let coinCategory: string[] = [];
+  let opendict: Record<string, QJ> = {};
 
-  const [fixed, setFixed] = useState("");
-  const [plSum, setPlSum] = useState(0);
-  const [error, setError] = useState(false);
-  const [result, setResult] = useState(0);
-
-  function getBuyQty(rows: TradeRow[]): number {
-    let buyQty = 0;
-    for (const row of rows) {
-      if (row.side === "buy" && row.qty !== "") {
-        buyQty = buyQty + Number(row.qty)
-      }
-    }
-    return (buyQty)
-  }
-
-  function getBuySum(rows: TradeRow[]): number {
-    let buySum = 0;
-    for (const row of rows) {
-      if (row.side === "buy" && row.jpy !== "") {
-        buySum = buySum + Number(row.jpy)
-      }
-    }
-    return buySum
-  }
-
-  function getSellQty(rows: TradeRow[]): number {
-    let sellQrt = 0;
-    for (const row of rows) {
-      if (row.side === "sell" && row.qty !== "") {
-        sellQrt = sellQrt + Number(row.qty)
-      }
-    }
-    return sellQrt
-  }
-
-  function getSellSum(rows: TradeRow[]): number {
-    let sellSum = 0;
-    for (const row of rows) {
-      if (row.side === "sell" && row.jpy !== "") {
-        sellSum = sellSum + Number(row.jpy)
-      }
-    }
-    return sellSum
-  }
-
-  function getFeeSum(rows: TradeRow[]): number {
-    let feeSum = 0;
-    for (const row of rows) {
-      if (row.fee !== "") {
-        feeSum = feeSum + Number(row.fee)
-      }
-    }
-    return feeSum
-  }
-
-  function getYrBuy(rows: TradeRow[]): number {
-    let yrBuy = 0;
-    for (const row of rows) {
-      if (row.side === "buy") {
-        yrBuy = yrBuy + Number(row.jpy) + Number(row.fee)
-      }
-    }
-    return yrBuy
-
-  }
 
   return (
 
-    <div>
-      <div style={{
-        textAlign: "center",
-        fontSize: "32px",
-        margin: "50px 0",
-      }}>
-        仮想通貨損益合計計算ツール
-      </div>
+    <div style={{ margin: "40px 20px" }}>
 
-      <div style={{ maxWidth: "340px", margin: "50px auto" }}>
-        <div style={{
-          display: "flex",
-          gap: "12px",
-        }}>
-          <div>学生ですか？</div>
-          <div style={{
-            display: "flex",
-            gap: "8px"
+      <div /*マニュアル入力*/>
+
+        {(step === 2 || step === 3) &&
+          <div style={{ /*仮想通貨の選択*/
+            padding: "16px 8px",
+            border: "1px solid blue",
           }}>
-            <button
-              style={{
-                padding: "6px 10px",
-                border: form.isStu === true ? "2px solid #7897ffff" : "1px solid #ccc",
-              }}
-              onClick={() => setForm({ ...form, isStu: true })}
-            >
-              はい
-            </button>
-            <button
-              style={{
-                padding: "6px 10px",
-                border: form.isStu === false ? "2px solid #7897ffff" : "1px solid #ccc",
-              }}
-              onClick={() => setForm({ ...form, isStu: false })}
-            >
-              いいえ
-            </button>
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: "12px", margin: "15px 0" }}>
-          <div>あなたの給与所得：</div>
-          <input
-            style={{ width: "80px", padding: "6px 10px", border: "1px solid #ccc" }}
-            value={
-              form.salw === ""
-                ? ""
-                : Number(form.salw).toLocaleString()
-            }
-            onChange={(e) => {
-              const raw = e.target.value.replace(/,/g, "");
-              /^[0-9]*$/.test(raw) &&
-                setForm({ ...form, salw: raw });
-            }}
-          />
+            <div style={{ fontSize: "24px" }}>仮想通貨の選択</div>
 
-          <div>万円</div>
-        </div>
-
-        <div style={{ display: "flex", gap: "12px", margin: "15px 0" }}>
-          <div>年初保有額：</div>
-          <input
-            style={{ width: "100px", padding: "6px 10px", border: "1px solid #ccc" }}
-            value={
-              form.b0v === ""
-                ? ""
-                : Number(form.b0v).toLocaleString()
-            }
-            onChange={(e) => {
-              const raw = e.target.value.replace(/,/g, "");
-              /^[0-9]*$/.test(raw) &&
-                setForm({ ...form, b0v: raw });
-            }}
-          />
-
-          <div>円</div>
-        </div>
-
-        <div style={{ display: "flex", gap: "12px", margin: "15px 0" }}>
-          <div>年初保有数量：</div>
-          <input
-            style={{ width: "80px", padding: "6px 10px", border: "1px solid #ccc" }}
-            value={form.b0q}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (!/^(?:0|[1-9]\d*)(?:\.\d*)?$/.test(v) && v !== "") return;
-              setForm(prev => ({ ...prev, b0q: v }));
-            }}
-          />
-          <div>BTC, ETH,<br />XTP, etc...</div>
-        </div>
-      </div>
-
-      <div style={{ maxWidth: "770px", margin: "30px auto" }}>以下に取引データを入力：</div>
-      {rows.map((row, i) => (
-        <div key={row.id} style={{ display: "flex", gap: "12px", maxWidth: "770px", margin: "10px auto" }}>
-
-          <button
-            style={{
-              padding: "6px 10px",
-              border: row.side === "buy" ? "1px solid #ffffffff" : "1px solid #ccc",
-              backgroundColor: row.side === "buy" ? "#87ca9eff" : "",
-            }}
-            onClick={() =>
-              setRows((prev) =>
-                prev.map((row, index) =>
-                  index === i ? { ...row, side: "buy" } : row)
-              )}
-          >
-            購入
-          </button>
-          <button
-            style={{
-              padding: "6px 10px",
-              border: row.side === "sell" ? "1px solid #ffffffff" : "1px solid #ccc",
-              backgroundColor: row.side === "sell" ? "#ff9d9dff" : "",
-            }}
-            onClick={() =>
-              setRows((prev) =>
-                prev.map((row, index) =>
-                  index === i ? { ...row, side: "sell" } : row)
-              )}
-          >
-            売却
-          </button>
-          <div>数量：</div>
-          <input
-            style={{ width: "114px", padding: "6px 10px", border: "1px solid #ccc" }}
-            value={row.qty}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (!/^(?:0|[1-9]\d*)(?:\.\d*)?$/.test(v) && v !== "") return;
-
-              setRows(prev =>
-                prev.map((r, index) =>
-                  index === i ? { ...r, qty: v } : r
-                )
-              );
-            }}
-          />
-          <div>JPY：</div>
-          <input
-            style={{ width: "114px", padding: "6px 10px", border: "1px solid #ccc" }}
-            value={
-              row.jpy === ""
-                ? ""
-                : Number(row.jpy || "0").toLocaleString()
-            }
-            onChange={(e) => {
-              const raw = e.target.value.replace(/,/g, "");
-              /^[0-9]*$/.test(raw) &&
-                setRows((prev) =>
-                  prev.map((r) =>
-                    r.id === row.id ? { ...r, jpy: raw } : r
-                  )
-                );
-            }}
-          />
-
-          <div>手数料：</div>
-          <input
-            style={{ width: "114px", padding: "6px 10px", border: "1px solid #ccc" }}
-            value={
-              row.fee === ""
-                ? ""
-                : Number(row.fee || "0").toLocaleString()
-            }
-            onChange={(e) => {
-              const raw = e.target.value.replace(/,/g, "");
-              /^[0-9]*$/.test(raw) &&
-                setRows((prev) =>
-                  prev.map((r) =>
-                    r.id === row.id ? { ...r, fee: raw } : r
-                  )
-                );
-            }}
-          />
-
-
-          <button
-            style={{ padding: "6px 10px", border: "1px solid #ccc" }}
-            disabled={rows.length <= 1}
-            onClick={() =>
-              setRows((prev) => prev.filter((r) => r.id !== row.id))
-            }
-          >
-            削除
-          </button>
-
-
-
-        </div>
-
-      ))}
-
-      <div style={{ display: "flex", gap: "10px", maxWidth: "320px", margin: "50px auto" }}>
-        <button
-          style={{ padding: "6px 12px", border: "1px solid #ccc" }}
-          onClick={() => {
-            for (let i = 0; i < 10; i++) {
-              setRows((prev) => [
-                ...prev,
-                {
-                  id: crypto.randomUUID(),
-                  side: null,
-                  qty: "",
-                  jpy: "",
-                  fee: "",
-                },
-              ])
-            };
-          }}
-        >
-          ＋10
-        </button>
-        <button
-          style={{ padding: "6px 12px", border: "1px solid #ccc" }}
-          onClick={() => {
-            for (let i = 0; i < 5; i++) {
-              setRows((prev) => [
-                ...prev,
-                {
-                  id: crypto.randomUUID(),
-                  side: null,
-                  qty: "",
-                  jpy: "",
-                  fee: "",
-                },
-              ])
-            };
-          }}
-        >
-          ＋5
-        </button>
-        <button
-          style={{ padding: "6px 12px", border: "1px solid #ccc" }}
-          onClick={async () => {
-            setRows((prev) => [
-              ...prev,
-              {
-                id: crypto.randomUUID(),
-                side: null,
-                qty: "",
-                jpy: "",
-                fee: "",
-              },
-            ]);
-          }}
-        >
-          ＋1
-        </button>
-        <button
-          style={{ padding: "6px 12px", border: "1px solid #ccc" }}
-          disabled={rows.length <= 1}
-          onClick={() => {
-            setRows((prev) => {
-              // qty / jpy / fee が全部空の行を除外
-              const filtered = prev.filter(
-                (row) => !(row.qty === "" && row.jpy === "" && row.fee === "")
+            {openInfo.map((item) => {
+              const used = new Set(
+                openInfo
+                  .filter((x) => x.id !== item.id)
+                  .map((x) => x.name)
+                  .filter((n) => n !== "" && n !== OTHER)
               );
 
-              // 全部消えたら、空の行を1つだけ残す
-              return filtered.length === 0 ? [createEmptyRow()] : filtered;
-            });
-          }}
-        >
-          空欄一括削除
-        </button>
+              return (
+                <div key={item.id} style={{ marginTop: "20px" }}>
+                  <div
+                    key={item.id}
+                    style={{ marginTop: "20px" }}
+                  >
+                    <div style={{ display: "flex" }}>
+                      <div>種類</div>
+
+
+
+                      <select
+                        style={{ border: "1px solid #ccc" }}
+                        value={isOtherMap[item.id] ? OTHER : item.name}
+                        onChange={(e) => {
+                          const v = e.target.value;
+
+                          setOpenInfo((prev) =>
+                            prev.map((r) => (r.id === item.id ? { ...r, name: v } : r))
+                          );
+
+                          setIsOtherMap((prev) => ({
+                            ...prev,
+                            [item.id]: v === OTHER,
+                          }));
+
+                          if (v !== OTHER) {
+                            setOtherNames((prev) => {
+                              const next = { ...prev };
+                              delete next[item.id];
+                              return next;
+                            });
+                          }
+                        }}
+
+
+                      >
+                        <option value="" disabled>選択してください</option>
+
+                        {COIN_OPTIONS
+                          .filter((coin) => !used.has(coin) || coin === item.name)
+                          .map((coin) => (
+                            <option key={coin} value={coin}>
+                              {coin}
+                            </option>
+                          ))}
+
+                        <option value={OTHER}>その他</option>
+                      </select>
+
+
+                    </div>
+                    {isOtherMap[item.id] && (
+                      <div style={{ display: "flex" }}>
+                        <div>名前</div>
+                        <input
+                          style={{ border: "1px solid #ccc" }}
+                          placeholder="通貨名を入力"
+                          value={otherNames[item.id] ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value.toUpperCase();
+
+                            // 英字のみ（入力中は長さ制限ゆるくしておくと便利）
+                            if (!/^[A-Z]*$/.test(v)) return;
+                            if (v.length > 5) return;
+
+                            // 重複チェック（openInfo.name に "実コード" が入っている前提でチェック）
+                            const duplicated = openInfo.some(
+                              (i) => i.id !== item.id && i.name === v
+                            );
+                            if (duplicated) {
+                              setDuplicateError("すでに追加されています");
+                              return;
+                            }
+                            setDuplicateError(null);
+
+                            // 表示用
+                            setOtherNames((prev) => ({
+                              ...prev,
+                              [item.id]: v,
+                            }));
+
+                            // ★計算用：openInfo.name も更新してしまう
+                            setOpenInfo((prev) =>
+                              prev.map((r) => (r.id === item.id ? { ...r, name: v } : r))
+                            );
+                          }}
+
+
+                        />
+                        <div style={{ color: "red" }}>{duplicateError}</div>
+                      </div>
+                    )}
+
+                    <div style={{ display: "flex" }}>
+                      <div>年初保有数量</div>
+                      <input
+                        style={{ border: "1px solid #ccc" }}
+                        value={item.qty}
+                        onChange={(e) => {
+                          if (!/^(?:0|[1-9]\d*)(?:\.\d*)?$/.test(e.target.value) && e.target.value !== "") return;
+                          const v = e.target.value
+                          setOpenInfo((prev) =>
+                            prev.map((r) =>
+
+                              r.id === item.id
+                                ? { ...r, qty: v }
+                                : r
+                            )
+                          );
+                        }
+                        }
+                      />
+                    </div>
+                    <div style={{ display: "flex" }}>
+                      <div>年初保有額</div>
+                      <input
+                        style={{ border: "1px solid #ccc" }}
+                        value={item.jpy}
+                        onChange={(e) => {
+                          if (!/^(|0|[1-9][0-9]*)$/.test(e.target.value) && e.target.value !== "") return;
+                          const v = e.target.value
+                          setOpenInfo((prev) =>
+                            prev.map((r) =>
+                              r.id === item.id ? { ...r, jpy: v } : r
+                            )
+                          );
+                        }
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            <div style={{ display: "flex" }}>
+              <button
+                disabled={openInfo.at(-1)?.name === ""}
+                style={{ border: "1px solid #ccc" }}
+                onClick={() => {
+                  setOpenInfo((prev) => [...prev, createEmptyCategory()]);
+                }}
+              >
+                ＋
+              </button>
+              <button style={{ border: "1px solid #ccc" }}
+                onClick={() => {
+                  setOpenInfo((prev) => {
+                    if (prev.length <= 1) return prev; // 1行は残す
+
+                    const removed = prev[prev.length - 1]; // 消す要素
+                    // otherNames 側も消して整合を取る
+                    setOtherNames((namesPrev) => {
+                      const next = { ...namesPrev };
+                      delete next[removed.id];
+                      return next;
+                    });
+
+                    return prev.slice(0, -1);
+                  });
+
+                  setDuplicateError(null);
+                }}
+              >
+                －
+              </button>
+            </div>
+            <button
+              style={{ border: "1px solid #ccc", marginTop: "20px", }}
+              onClick={() => setStep(3)}
+              disabled={openInfo.at(-1)?.name === ""}
+            >
+              入力完了
+            </button>
+          </div>
+        }
+
+        {(step === 3 || step === 4) &&
+          <div style={{ /*取引情報入力部分*/
+            padding: "16px 8px",
+            border: "1px solid blue",
+          }}>
+            {isEditing === false ?
+              (<div style={{ fontSize: "24px" }}>取引情報の入力</div>) :
+              (<div style={{ fontSize: "24px" }}>修正中</div>)
+            }
+            <div style={{ display: "flex" }}>
+              <div>取引の種類</div>
+              <select
+                ref={sideRef}
+                style={{ border: "1px solid #ccc" }}
+                value={emptyManualTrade.side}
+                onChange={(e) => {
+                  const value = e.target.value as "buy" | "sell" | "";
+                  setEmptyManualTrade((prev) => ({
+                    ...prev,
+                    side: e.target.value as "buy" | "sell" | "",
+                  }));
+                  if (value !== "") {
+                    typRef.current?.focus();
+                  }
+
+                }}
+              >
+                <option value="" disabled>
+                  選択してください
+                </option>
+
+                <option value="buy">購入 (買い)</option>
+                <option value="sell">売却 (売り)</option>
+              </select>
+              {sbError === true && <div style={{ color: "red" }}>入力してください</div>}
+
+            </div>
+
+            <div style={{ display: "flex" }}>
+              <div>通貨</div>
+              <select
+                ref={typRef}
+                style={{ border: "1px solid #ccc" }}
+                value={emptyManualTrade.typ}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setEmptyManualTrade((prev) => ({
+                    ...prev,
+                    typ: v,
+                  }));
+                  if (v !== "") {
+                    qtyRef.current?.focus();
+                  }
+                }}
+              >
+                <option value="" disabled>選択してください</option>
+
+                {tradeTypOptions.map((coin) => (
+                  <option key={coin} value={coin}>
+                    {coin}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+
+            <div style={{ display: "flex" }}>
+              <div>取引数量</div>
+              <input
+                ref={qtyRef}
+                onKeyDown={handleEnterMove(jpyRef)}
+                style={{ border: "1px solid #ccc" }}
+                value={emptyManualTrade.qty}
+                onChange={(e) => {
+                  if (!/^(?:0|[1-9]\d*)(?:\.\d*)?$/.test(e.target.value) && e.target.value !== "") return;
+                  setEmptyManualTrade(prev => ({
+                    ...prev,
+                    qty: e.target.value,
+                  })
+                  )
+                }}
+              />
+            </div>
+            <div style={{ display: "flex" }}>
+              <div>取引金額</div>
+              <input
+                ref={jpyRef}
+                onKeyDown={handleEnterMove(feeRef)}
+                style={{ border: "1px solid #ccc" }}
+                value={emptyManualTrade.jpy}
+                onChange={(e) => {
+                  if (!/^(|0|[1-9][0-9]*)$/.test(e.target.value)) return;
+                  setEmptyManualTrade(prev => ({
+                    ...prev,
+                    jpy: e.target.value,
+                  })
+                  )
+                }}
+              />
+            </div>
+            <div style={{ display: "flex" }}>
+              <div>手数料</div>
+              <input
+                ref={feeRef}
+                onKeyDown={handleEnterMove(
+                  isEditing ? editBtnRef : submitBtnRef
+                )}
+                style={{ border: "1px solid #ccc" }}
+                value={emptyManualTrade.fee}
+                onChange={(e) => {
+                  if (!/^(|0|[1-9][0-9]*)$/.test(e.target.value)) return;
+                  setEmptyManualTrade(prev => ({
+                    ...prev,
+                    fee: e.target.value,
+                  })
+                  )
+                }}
+              />
+            </div>
+            {isEditing ? (
+              <div>
+                <button
+                  ref={editBtnRef}
+                  style={{ border: "1px solid #ccc" }}
+                  onClick={() => {
+                    setManualTrades(prev =>
+                      prev.map(t =>
+                        t.id === editingManualTradeId ? {
+                          id: editingManualTradeId,
+                          side: emptyManualTrade.side,
+                          typ: emptyManualTrade.typ,
+                          qty: emptyManualTrade.qty === "" ? "0" : emptyManualTrade.qty,
+                          jpy: emptyManualTrade.jpy === "" ? "0" : emptyManualTrade.jpy,
+                          fee: emptyManualTrade.fee === "" ? "0" : emptyManualTrade.fee,
+                        } : t
+                      ));
+                    setEmptyManualTrade({
+                      id: crypto.randomUUID(),
+                      side: "",
+                      typ: "",
+                      qty: "",
+                      jpy: "",
+                      fee: "",
+                    })
+                    setEditingManualTradeId("")
+                    setIsEditing(false)
+                  }}>
+                  更新
+                </button>
+                <button
+                  style={{ border: "1px solid #ccc" }}
+                  onClick={() => {
+                    setEmptyManualTrade({
+                      id: crypto.randomUUID(),
+                      side: "",
+                      typ: "",
+                      qty: "",
+                      jpy: "",
+                      fee: "",
+                    })
+                    setEditingManualTradeId("")
+                    setIsEditing(false)
+                  }}>
+                  キャンセル
+                </button>
+              </div>
+
+            ) : (
+              <button
+                disabled={emptyManualTrade.side === "" || emptyManualTrade.typ === ""}
+                ref={submitBtnRef}
+                style={{ border: "1px solid #ccc" }}
+                onClick={() => {
+                  setManualTrades((prev) => {
+                    return [...prev, {
+                      id: emptyManualTrade.id,
+                      side: emptyManualTrade.side,
+                      typ: emptyManualTrade.typ,
+                      qty: emptyManualTrade.qty === "" ? "0" : emptyManualTrade.qty,
+                      jpy: emptyManualTrade.jpy === "" ? "0" : emptyManualTrade.jpy,
+                      fee: emptyManualTrade.fee === "" ? "0" : emptyManualTrade.fee,
+                    }];
+                  });
+                  setEmptyManualTrade({
+                    id: crypto.randomUUID(),
+                    side: "",
+                    typ: "",
+                    qty: "",
+                    jpy: "",
+                    fee: "",
+                  })
+                  setSbError(false)
+                  setTimeout(() => sideRef.current?.focus(), 0);
+                }}>
+                確定
+              </button>
+            )}
+
+          </div>
+        }
+
+        {(step === 3 || step === 4) &&
+          <div style={{ /*取引情報出力部分*/
+            padding: "16px 8px",
+            border: "1px solid blue",
+          }}>
+            <div style={{ fontSize: "24px" }}>取引情報の出力</div>
+            <table>
+              <thead>
+                <tr>
+                  <th style={{ border: "1px solid black", padding: "10px" }}>取引種類</th>
+                  <th style={{ border: "1px solid black", padding: "10px" }}>取引数量</th>
+                  <th style={{ border: "1px solid black", padding: "10px" }}>取引金額</th>
+                  <th style={{ border: "1px solid black", padding: "10px" }}>手数料</th>
+                  <th style={{ border: "1px solid black", padding: "10px" }}>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {manualTrades.map((trade) => (
+                  <tr key={trade.id}>
+                    <td style={{ border: "1px solid black", padding: "6px", textAlign: "left" }}>
+                      {trade.side === "buy" ? "購入 (買い)" : "売却 (売り)"}
+                    </td>
+                    <td style={{ border: "1px solid black", padding: "6px", textAlign: "right" }}>
+                      {trade.qty} {trade.typ}
+                    </td>
+                    <td style={{ border: "1px solid black", padding: "6px", textAlign: "right" }}>
+                      {addComma(trade.jpy)} 円
+                    </td>
+                    <td style={{ border: "1px solid black", padding: "6px", textAlign: "right" }}>
+                      {addComma(trade.fee)} 円
+                    </td>
+                    <td style={{ border: "1px solid black", padding: "6px", textAlign: "right" }}>
+
+                      <button
+                        style={{ border: "1px solid #ccc" }}
+                        onClick={() => {
+                          setEmptyManualTrade({
+                            id: trade.id,
+                            side: trade.side,
+                            typ: trade.typ,
+                            qty: trade.qty,
+                            jpy: trade.jpy,
+                            fee: trade.fee,
+                          })
+                          setIsEditing(true);
+                          setEditingManualTradeId(trade.id)
+                        }
+                        }
+                      >
+                        修正
+                      </button>
+
+
+                      <button
+
+                        style={{ border: "1px solid #ccc" }}
+                        disabled={isEditing}
+                        onClick={() => {
+                          setManualTrades((prev) =>
+                            prev.filter(t => t.id !== trade.id)
+                          );
+                        }}>
+                        削除
+                      </button>
+
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <button
+              style={{ border: "1px solid #ccc", marginTop: "20px" }}
+              onClick={() => {
+                smy = {};
+                coinCategory = []
+                setZeroError(false)
+                manualTrades.forEach((trade) => {
+                  // typ が空ならスキップ（念のため）
+                  if (!trade.typ) return;
+
+                  // side が buy/sell 以外（つまり ""）ならスキップ
+                  if (trade.side !== "buy" && trade.side !== "sell") return;
+                  const side: Side = trade.side;
+
+                  // coinCategory 追加（重複しないように）
+                  if (!coinCategory.includes(trade.typ)) {
+                    coinCategory.push(trade.typ);
+                  }
+
+                  // coin の箱を作る（Partial<Record<Side, QJF>>）
+                  smy[trade.typ] ??= {};
+
+                  // buy/sell の箱を作る（QJF）
+                  smy[trade.typ][side] ??= { qty: 0, jpy: 0, fee: 0 };
+
+                  // ここから加算（??= したので ! でOK）
+                  smy[trade.typ][side]!.qty += num(trade.qty);
+                  smy[trade.typ][side]!.jpy += num(trade.jpy);
+                  smy[trade.typ][side]!.fee += num(trade.fee);
+                });
+                opendict = {};
+                openInfo.forEach((info) => {
+                  if (!info.name) return;
+                  opendict[info.name] = { qty: num(info.qty), jpy: num(info.jpy) };
+                });
+                pnlTotal = 0
+                for (const trade of coinCategory) {
+                  const buy = smy[trade]?.buy ?? { qty: 0, jpy: 0, fee: 0 };
+                  const sell = smy[trade]?.sell ?? { qty: 0, jpy: 0, fee: 0 };
+                  const open = opendict[trade] ?? { qty: 0, jpy: 0 };
+
+                  const aveCost_num =
+                    open.jpy + buy.jpy + buy.fee;
+
+                  const aveCost_denom =
+                    open.qty + buy.qty;
+                  if (aveCost_denom === 0) {
+                    setZeroError(true)
+                    break
+                  }
+                  const pnl =
+                    sell.jpy -
+                    ((aveCost_num / aveCost_denom) * sell.qty + sell.fee);
+
+                  pnlTotal += pnl;
+                }
+
+                setMResult(addComma(String(Math.round(pnlTotal))));
+                setStep(4);
+              }}
+            >
+              計算
+            </button>
+          </div>
+
+        }
+        {(step === 4) &&
+          <div style={{ border: "1px solid blue" }}>
+            <div style={{ fontSize: "24px" }}>計算結果</div>
+            {zeroError === false &&
+
+              <div style={{ display: "flex" }}>
+                <div>損益合計</div>
+                <div>{mResult}円</div>
+              </div>
+            }
+            {zeroError === true &&
+              <div>このデータは計算できません</div>
+            }
+          </div>
+        }
       </div>
 
-      <button
-        style={{ display: "flex", padding: "6px 12px", border: "1px solid #ccc", maxWidth: "190px", margin: "0 auto", marginBottom: "50px", fontSize: "32px" }}
-        onClick={() => {
-          setShow(true);
-          if (!didScrollRef.current) {
-            didScrollRef.current = true;
-            setTimeout(() => {
-              bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-            }, 0);
-          }
-          let c = 0;
-          for (let i = 0; i < rows.length; i++) {
-            if (rows[i].side !== null && rows[i].qty !== "" && rows[i].jpy !== "" && rows[i].fee !== "") {
-              c = c + 1
-            }
-          }
-          if (form.isStu !== null && form.salw !== "" && form.b0q !== "" && form.b0v !== "" && c === rows.length && Number(form.b0q) + getBuyQty(rows) !== 0) {
-            setError(false)
-          }
-          else {
-            setError(true)
-          }
-
-          const newplSum = getSellSum(rows) - (((Number(form.b0v) + getYrBuy(rows)) / (Number(form.b0q) + getBuyQty(rows))) * getSellQty(rows) + getFeeSum(rows));
-          setPlSum(newplSum);
-
-          let tax = 0;
-          if (newplSum >= 0) {
-            if (form.isStu === false) {
-              if (0 <= Number(form.salw) * 10000 + newplSum - 580000 && Number(form.salw) * 10000 + newplSum - 580000 <= 1950000) { tax = (Number(form.salw) * 10000 + newplSum - 580000) * 0.05 * (newplSum / (newplSum + Number(form.salw) * 10000)) }
-              if (1950000 < Number(form.salw) * 10000 + newplSum - 580000 && Number(form.salw) * 10000 + newplSum - 580000 <= 3300000) { tax = (Number(form.salw) * 10000 + newplSum - 580000) * 0.1 * (newplSum / (newplSum + Number(form.salw) * 10000)) }
-              if (3300000 < Number(form.salw) * 10000 + newplSum - 580000 && Number(form.salw) * 10000 + newplSum - 580000 <= 6950000) { tax = (Number(form.salw) * 10000 + newplSum - 580000) * 0.2 * (newplSum / (newplSum + Number(form.salw) * 10000)) }
-              if (6950000 < Number(form.salw) * 10000 + newplSum - 580000 && Number(form.salw) * 10000 + newplSum - 580000 <= 9000000) { tax = (Number(form.salw) * 10000 + newplSum - 580000) * 0.23 * (newplSum / (newplSum + Number(form.salw) * 10000)) }
-              if (9000000 < Number(form.salw) * 10000 + newplSum - 580000 && Number(form.salw) * 10000 + newplSum - 580000 <= 18000000) { tax = (Number(form.salw) * 10000 + newplSum - 580000) * 0.33 * (newplSum / (newplSum + Number(form.salw) * 10000)) }
-              if (18000000 < Number(form.salw) * 10000 + newplSum - 580000 && Number(form.salw) * 10000 + newplSum - 580000 <= 40000000) { tax = (Number(form.salw) * 10000 + newplSum - 580000) * 0.4 * (newplSum / (newplSum + Number(form.salw) * 10000)) }
-              if (40000000 < Number(form.salw) * 10000 + newplSum - 580000) { tax = (Number(form.salw) * 10000 + newplSum - 580000) * 0.45 * (newplSum / (newplSum + Number(form.salw) * 10000)) }
-              if (Number(form.salw) * 10000 + newplSum - 580000 < 0) { tax = 0 }
-            }
-            else {
-              if (Number(form.salw) * 10000 + newplSum > 850000) {
-                if (0 <= Number(form.salw) * 10000 + newplSum - 580000 && Number(form.salw) * 10000 + newplSum - 580000 <= 1950000) { tax = (Number(form.salw) * 10000 + newplSum - 580000) * 0.05 * (newplSum / (newplSum + Number(form.salw) * 10000)) }
-                if (1950000 < Number(form.salw) * 10000 + newplSum - 580000 && Number(form.salw) * 10000 + newplSum - 580000 <= 3300000) { tax = (Number(form.salw) * 10000 + newplSum - 580000) * 0.1 * (newplSum / (newplSum + Number(form.salw) * 10000)) }
-                if (3300000 < Number(form.salw) * 10000 + newplSum - 580000 && Number(form.salw) * 10000 + newplSum - 580000 <= 6950000) { tax = (Number(form.salw) * 10000 + newplSum - 580000) * 0.2 * (newplSum / (newplSum + Number(form.salw) * 10000)) }
-                if (6950000 < Number(form.salw) * 10000 + newplSum - 580000 && Number(form.salw) * 10000 + newplSum - 580000 <= 9000000) { tax = (Number(form.salw) * 10000 + newplSum - 580000) * 0.23 * (newplSum / (newplSum + Number(form.salw) * 10000)) }
-                if (9000000 < Number(form.salw) * 10000 + newplSum - 580000 && Number(form.salw) * 10000 + newplSum - 580000 <= 18000000) { tax = (Number(form.salw) * 10000 + newplSum - 580000) * 0.33 * (newplSum / (newplSum + Number(form.salw) * 10000)) }
-                if (18000000 < Number(form.salw) * 10000 + newplSum - 580000 && Number(form.salw) * 10000 + newplSum - 580000 <= 40000000) { tax = (Number(form.salw) * 10000 + newplSum - 580000) * 0.4 * (newplSum / (newplSum + Number(form.salw) * 10000)) }
-                if (40000000 < Number(form.salw) * 10000 + newplSum - 580000) { tax = (Number(form.salw) * 10000 + newplSum - 580000) * 0.45 * (newplSum / (newplSum + Number(form.salw) * 10000)) }
-                if (Number(form.salw) * 10000 + newplSum - 580000 < 0) { tax = 0 }
-              }
-              else {
-                tax = 0
-              }
-            }
-          }
-          else { tax = 0 }
-          setResult(tax)
-        }}
-      >
-        計算
-      </button>
-
-      {show && (
-        <div>
-          <div ref={bottomRef} />
-          <div style={{ fontSize: "24px", maxWidth: "96px", margin: "0 auto", }}>計算結果</div>
-          <div >
-            {error === false ?
-              (<div style={{ maxWidth: "300px", margin: "10px auto", }}>
-                <div style={{ display: "flex" }}>
-                  <div>損益合計：</div>
-                  <div style={{ color: plSum >= 0 ? "#00b48dff" : "#ff6d33ff" }}>￥{Math.round(plSum).toLocaleString()}</div>
-                </div>
-                <div style={{ display: "flex" }}>
-                  <div>支払う税金：</div>
-                  <div>￥{Math.round(result).toLocaleString()}</div>
-                </div>
-              </div>) :
-              (<div style={{ maxWidth: "390px", margin: "10px auto", color: "rgba(253, 72, 72, 1)" }}>エラー：空の入力がある、または計算不可能なデータ</div>)
-            }
-            <div style={{ marginBottom: "100px" }}></div>
-          </div>
-        </div>
-      )}
-
-    </div>
-
-
-
+    </div >
 
   );
 }
