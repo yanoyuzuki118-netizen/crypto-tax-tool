@@ -652,6 +652,7 @@ export default function Page() {
                 className={styles.input}
                 ref={qtyRef}
                 onKeyDown={handleEnterMove(jpyRef)}
+                placeholder="例：0.01"
                 value={emptyManualTrade.qty}
                 onChange={(e) => {
                   if (!/^(?:0|[1-9]\d*)(?:\.\d*)?$/.test(e.target.value) && e.target.value !== "") return;
@@ -662,6 +663,9 @@ export default function Page() {
                   )
                 }}
               />
+              <span className={styles.unitInline}>
+                {emptyManualTrade.typ || "—"}
+              </span>
             </div>
           </div>
           <div className={styles.formRow}>
@@ -669,6 +673,7 @@ export default function Page() {
             <div className={styles.formControl}>
               <input
                 className={styles.input}
+                placeholder="例：300000"
                 ref={jpyRef}
                 onKeyDown={handleEnterMove(feeRef)}
                 value={emptyManualTrade.jpy}
@@ -681,6 +686,7 @@ export default function Page() {
                   )
                 }}
               />
+              <span className={styles.unitInline}>円</span>
             </div>
           </div>
 
@@ -689,6 +695,7 @@ export default function Page() {
             <div className={styles.formControl}>
               <input
                 className={styles.input}
+                placeholder="例：500"
                 ref={feeRef}
                 onKeyDown={handleEnterMove(
                   isEditing ? editBtnRef : submitBtnRef
@@ -703,6 +710,7 @@ export default function Page() {
                   )
                 }}
               />
+              <span className={styles.unitInline}>円</span>
             </div>
           </div>
           <div className={styles.formActions}>
@@ -797,14 +805,19 @@ export default function Page() {
 
         <div className={styles.card}>
           <div className={styles.cardHeader}>
-            <div className={styles.cardTitle}>入力した取引の一覧</div>
-
+            <div>
+              <h2 className={styles.cardTitle}>入力した取引の一覧</h2>
+              <p className={styles.cardSub}>
+                入力した取引内容はページ内で保存されます。
+              </p>
+            </div>
             <button
               className={styles.btnDanger}
               onClick={() => {
                 const ok = window.confirm(
                   "すべての取引データを削除します。\nこの操作は元に戻せません。よろしいですか？"
                 );
+
 
                 if (!ok) return;
                 setMResult("")
@@ -1107,7 +1120,7 @@ export default function Page() {
                     </div>
 
                     <ul className={styles.resultList}>
-                      <li>暗号資産の所得：{addComma(String(Math.round(pnlTotal)))} 円</li>
+                      <li>暗号資産の所得：{addComma(String(Math.round(pnlTotalState)))} 円</li>
                       <li>給与収入：{addComma(String(Number(salaryAmount || 0)))} 円</li>
                       <li>事業所得：{addComma(String(Number(businessAmount || 0)))} 円</li>
                       <li>暗号資産以外の雑所得：{addComma(String(Number(otherMiscAmount || 0)))} 円</li>

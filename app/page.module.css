@@ -477,11 +477,6 @@
   font-weight: 600;
 }
 
-.formControl {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
 
 .radioGroup {
   display: inline-flex;
@@ -1144,3 +1139,54 @@
   }
 }
 
+.cardSub{
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #6b7a90;
+  line-height: 1.5;
+}
+
+/* 取引入力欄：input + 単位を横並びにする */
+.formControl {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 入力欄は横に伸びる */
+.formControl .input {
+  flex: 1;
+  min-width: 0; /* スマホでのはみ出し防止 */
+}
+
+/* 単位（円 / XRP など） */
+.unitInline {
+  white-space: nowrap;
+  color: #22324a;   /* フォントは変えてない */
+}
+
+/* ===== 取引入力：単位を右に付けてもズレないように上書き ===== */
+
+/* 左のラベル列を少し細くして、入力が右に行きすぎるのを防ぐ */
+.formRow {
+  grid-template-columns: 140px 1fr; /* 120pxだと短いなら 150〜170でもOK */
+}
+
+/* 右側（入力+単位）を“左寄せ”で開始 */
+.formControl {
+  justify-content: flex-start;
+  min-width: 0; /* はみ出し対策 */
+}
+
+/* 既存の width:260px を上書きして、入力を自然に伸ばす */
+.formControl .input,
+.formControl .select {
+  width: 100%;
+  max-width: 520px; /* 好みで 460〜620 くらい */
+}
+
+/* 単位は右に表示・改行しない */
+.unitInline {
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
