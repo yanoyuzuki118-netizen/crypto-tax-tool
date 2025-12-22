@@ -1048,17 +1048,32 @@
   }
 }
 
-@media (max-width: 480px) {
+/* スマホだけ：ヘッダー全体を左寄せ */
+@media (max-width: 600px) {
   .siteHeader {
-    padding-top: 22px;
+    display: flex;
+    justify-content: flex-start; /* ← 中央寄せを解除 */
+    padding-left: 0px;          /* 画面左からの余白 */
+    padding-right: 16px;
+  }
+
+  .logoBlock {
+    align-items: flex-start;     /* 中身も左基準 */
+    text-align: left;
+  }
+
+  .logo {
+    margin: 0;                   /* auto を完全に殺す */
   }
 
   .tagline {
-    font-size: 13px; /* 1行維持しやすくする */
+    margin-top: 4px;
   }
+}
 
-  /* ←ここを 1pxずつ動かしてピッタリに合わせる */
-  .logoBlock {
-    --logo-nudge-x: 4px;  /* 右に寄せたいなら +, 左なら - */
+@media (max-width: 600px) {
+  .tagline {
+    font-size: 13px;
+    line-height: 1.7;
   }
 }
