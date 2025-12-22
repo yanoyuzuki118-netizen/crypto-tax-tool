@@ -1077,3 +1077,28 @@
     line-height: 1.7;
   }
 }
+
+.logo {
+  display: block;
+  width: 200px;     /* ←ここを小さくすると縮む */
+  height: auto;     /* ←これが超重要（縦横比維持） */
+  max-width: 100%;
+  object-fit: contain;
+}
+
+@media (max-width: 600px) {
+  .logoBlock {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .tagline {
+    text-align: left;
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 600px){
+  .logo{ width: 220px; }
+  .tagline{ --logoTextOffset: 8px; }
+}
