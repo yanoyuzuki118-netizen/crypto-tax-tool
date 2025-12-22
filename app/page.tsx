@@ -104,7 +104,9 @@ export default function Page() {
   const [error, setError] = useState<Boolean>(false)
   const [MorR, setMorR] = useState<"M" | "R">("M")
   const [repoTrades, setRepoTrades] = useState<repotrade[]>([]);
-  const [targetYear, setTargetYear] = useState(Number(new Date().getFullYear()))
+  const [targetYear, setTargetYear] = useState<string>(
+    String(new Date().getFullYear())
+  );
   // 給与
   const [hasSalary, setHasSalary] = useState<boolean | null>(null);
   const [salaryAmount, setSalaryAmount] = useState<string>("");
@@ -193,11 +195,11 @@ export default function Page() {
     return 0
   }
   const basicDed = (n: number) => {
-    if (targetYear <= 2024) {
+    if (Number(targetYear) <= 2024) {
       if (n <= 23500000) { return Math.max(n - 480000, 0) }
       return n
     }
-    if (targetYear === 2025 || targetYear === 2026) {
+    if (Number(targetYear) === 2025 || Number(targetYear) === 2026) {
       if (n <= 1320000) { return Math.max(n - 950000, 0) }
       if (1320000 < n && n <= 3360000) { return Math.max(n - 880000, 0) }
       if (3360000 < n && n <= 4890000) { return Math.max(n - 680000, 0) }
@@ -206,7 +208,7 @@ export default function Page() {
       if (23500000 < n) { return n }
       return 0
     }
-    if (targetYear >= 2027) {
+    if (Number(targetYear) >= 2027) {
       if (n <= 1320000) { return Math.max(n - 580000, 0) }
       if (1320000 < n && n <= 23500000) { return n }
       if (23500000 < n) { return n }
@@ -237,7 +239,6 @@ export default function Page() {
   let qryptTax = 0
   let stuQryptTax = 0
   let totalIncome = 0
-
 
 
 
@@ -895,16 +896,34 @@ export default function Page() {
           <div className={styles.cardFooter}>
             <div className={styles.calcArea}>
               <label className={styles.calcLabel}>計算する年</label>
-              <input
-                className={styles.input}
-                type="number"
-                value={targetYear}
-                onChange={(e) => {
-                  if (!/^(|0|[1-9][0-9]{0,3})$/.test(e.target.value)) return;
-                  setTargetYear(Number(e.target.value))
-                }
-                }
-              />
+              <div className={styles.spinWrap}>
+
+
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className={styles.input}
+                  value={targetYear}
+                  onChange={(e) => {
+                    const v = e.target.value;
+
+                    // 空はOK（消せるようにする）
+                    if (v === "") {
+                      setTargetYear("");
+                      return;
+                    }
+
+                    // 1〜9999 だけ許可（0始まり拒否）
+                    if (!/^[1-9]\d{0,3}$/.test(v)) return;
+
+                    setTargetYear(v);
+                  }}
+                />
+
+
+              </div>
+
+
             </div>
 
             <button
@@ -953,7 +972,7 @@ export default function Page() {
                     const aveCost = denom === 0 ? 0 : (startCost + buy.jpy + buy.fee) / denom;
 
                     // その年の損益（targetYearだけ加算）
-                    if (year === targetYear) {
+                    if (year === Number(targetYear)) {
                       pnlTotal += (sell.jpy - sell.fee) - aveCost * sell.qty;
                     }
 

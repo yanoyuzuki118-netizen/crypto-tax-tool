@@ -1047,3 +1047,18 @@
     justify-content: center;
   }
 }
+
+@media (max-width: 480px) {
+  .siteHeader {
+    padding-top: 22px;
+  }
+
+  .tagline {
+    font-size: 13px; /* 1行維持しやすくする */
+  }
+
+  /* ←ここを 1pxずつ動かしてピッタリに合わせる */
+  .logoBlock {
+    --logo-nudge-x: 4px;  /* 右に寄せたいなら +, 左なら - */
+  }
+}
