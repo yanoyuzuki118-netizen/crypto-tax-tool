@@ -1190,3 +1190,33 @@
   white-space: nowrap;
   flex: 0 0 auto;
 }
+
+.btnDanger {
+  white-space: nowrap;   /* 「すべて削除」を分割しない */
+}
+
+/* スマホはヘッダーを縦に */
+@media (max-width: 600px) {
+  .cardHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .btnDanger {
+    align-self: flex-end; /* 右上に置く */
+    min-width: 120px;     /* 細くなりすぎないように */
+  }
+}
+
+/* 操作列の最低幅を確保（折り返し防止） */
+.table th:last-child,
+.table td:last-child {
+  min-width: 160px;
+}
+
+/* ボタン文字を折り返さない＋最低幅 */
+.actions button {
+  white-space: nowrap;
+  min-width: 72px;      /* “修正”“削除”が1行で入る幅 */
+}
