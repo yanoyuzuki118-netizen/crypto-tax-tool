@@ -475,7 +475,7 @@ export default function Page() {
               <div className={styles.qLabel}>
                 暗号資産以外の雑所得はありますか？
                 <div className={styles.qHint}>
-                  （原稿料・講演料・ポイント収入など）
+                  （メルカリ・ポイント収入など）
                 </div>
               </div>
               <div className={styles.qRight}>
