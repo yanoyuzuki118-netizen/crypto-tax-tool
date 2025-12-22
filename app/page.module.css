@@ -1118,7 +1118,7 @@
 
 .logo {
   display: block;
-  width: 250px;
+  width: 225px;
   /* ←ここを小さくすると縮む */
   height: auto;
   /* ←これが超重要（縦横比維持） */
