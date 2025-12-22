@@ -1118,7 +1118,7 @@
 
 .logo {
   display: block;
-  width: 180px;
+  width: 300px;
   /* ←ここを小さくすると縮む */
   height: auto;
   /* ←これが超重要（縦横比維持） */
@@ -1128,10 +1128,7 @@
 
 @media (max-width: 600px){
   .logoWrap{
-    width: 130x;            /* ← スマホのロゴサイズ（ここを変えると確実に縮む） */
-  }
-  .tagline{
-    max-width: 30ch;         /* 任意：スマホで折り返し綺麗に */
+    width: 300px;            /* ← スマホのロゴサイズ（ここを変えると確実に縮む） */
   }
 }
 
